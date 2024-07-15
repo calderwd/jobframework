@@ -52,6 +52,23 @@ type JobSummary struct {
 	NextExecutionTime  time.Time
 }
 
+func (js JobSummary) Build(jobType string, jobSchedule JobSchedule, jobContext JobContext) JobSummary {
+	js.Uuid = uuid.New()
+	js.Name = ""
+	js.Description = ""
+	js.State = Complete
+	js.Status = Failure
+	js.JobType = jobType
+	js.Progress = 0
+	js.EvaluationId = 0
+	js.Schedule = jobSchedule
+	js.LastExecutionStart = time.Time{}
+	js.LastExeuctionEnd = time.Time{}
+	js.NextExecutionTime = time.Time{}
+
+	return js
+}
+
 type JobFilter struct {
 }
 
@@ -59,6 +76,7 @@ type JobFilterEntry struct {
 }
 
 type JobProfile interface {
+	CanAdd() bool
 }
 
 type ScheduleType int
@@ -74,8 +92,16 @@ type IJob interface {
 	Process() (bool, error)
 }
 
+type JobConfig struct {
+	JobType   string
+	Job       IJob
+	Scheduler ScheduleType
+	Profile   JobProfile
+}
+
 type JobRegistrar interface {
 	RegisterJobType(jobType string, job IJob, profile JobProfile, scheduleType ScheduleType)
+	GetJobConfig(jobType string) (JobConfig, error)
 }
 
 type JobService interface {

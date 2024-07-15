@@ -14,7 +14,7 @@ func RunAddTest() {
 
 	jobType := "my-job-type"
 	myJob := TestJob{}
-	myJobProfile := TestJobProfile{}
+	myJobProfile := api.DefaultJobProfile()
 
 	jf.GetJobRegistrar().RegisterJobType(jobType, myJob, myJobProfile, api.Standard)
 

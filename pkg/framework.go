@@ -6,5 +6,5 @@ import (
 )
 
 func NewInstance() api.JobService {
-	return jobmanager.NewInstance()
+	return jobmanager.GetInstance()
 }

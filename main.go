@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/calderwd/jobframework/test"
 )
 
 type TestJob struct {
@@ -17,5 +19,7 @@ type TestJobProfile struct {
 
 func main() {
 	fmt.Println("Start")
+
+	test.RunAddTest()
 
 }
