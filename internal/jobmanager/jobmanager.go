@@ -50,7 +50,7 @@ func (jm *jobManager) AddJob(jobType string, jobSchedule api.JobSchedule, jobCon
 			return uuid.Nil, err
 		}
 
-		if err := jm.jobExec.ScheduleJob(js); err != nil {
+		if err := jm.jobExec.ScheduleJob(js, user); err != nil {
 			logger.Error(err, "failed to schedule job")
 			return uuid.Nil, err
 		}

@@ -2,7 +2,7 @@ package jobexecutioncontroller
 
 import (
 	"github.com/calderwd/jobframework/api"
-	"github.com/calderwd/jobframework/internal/jobexecutioncontroller/scheduler"
+	sch "github.com/calderwd/jobframework/internal/jobexecutioncontroller/scheduler"
 	ll "github.com/calderwd/jobframework/internal/logger"
 	"github.com/calderwd/jobframework/internal/persist"
 )
@@ -12,19 +12,19 @@ var logger ll.Logger = ll.GetInstance()
 type JobExecutionController struct {
 }
 
-func (jec JobExecutionController) ScheduleJob(js api.JobSummary) error {
+func (jec JobExecutionController) ScheduleJob(js api.JobSummary, user string) error {
 
 	jc, err := GetJobRegistrar().GetJobConfig(js.JobType)
 
 	if err == nil {
 
-		scheduler, err := scheduler.GetJobScheduler(jc.Scheduler)
+		scheduler, err := sch.GetJobScheduler(jc.Scheduler)
 
 		if err != nil {
 			return err
 		}
 
-		scheduler.scheduleJob(js)
+		scheduler.ScheduleJob(js, jc.Job)
 
 		if js.LastExecutionStart != nil {
 			js.State = api.Rescheduled
@@ -32,7 +32,7 @@ func (jec JobExecutionController) ScheduleJob(js api.JobSummary) error {
 			js.State = api.Scheduled
 		}
 
-		persist.GetJobPersister().updateJob(js)
+		persist.GetJobPersister().UpdateJob(js, user)
 	} else {
 
 		logger.Error(err)

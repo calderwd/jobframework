@@ -10,6 +10,7 @@ import (
 var logger ll.Logger = ll.GetInstance()
 
 type Scheduler interface {
+	ScheduleJob(js api.JobSummary, job api.IJob)
 }
 
 type schedulerFactory struct {
@@ -18,14 +19,14 @@ type schedulerFactory struct {
 
 var sf = schedulerFactory{
 	schedulers: map[api.ScheduleType]Scheduler{
-		api.Standard: StandardScheduler{},
+		api.Standard: &StandardScheduler{},
 		// api.Sequential: SequentialScheduler{},
 		// api.Periodic: PeriodicScheduler{},
 		// api.Cron: CronScheduler{}.
 	},
 }
 
-func GetJobScheduler(s api.ScheduleType) (*Scheduler, error) {
+func GetJobScheduler(s api.ScheduleType) (Scheduler, error) {
 	switch s {
 	case api.Standard:
 	case api.Sequential:
@@ -38,5 +39,5 @@ func GetJobScheduler(s api.ScheduleType) (*Scheduler, error) {
 	}
 
 	sc := sf.schedulers[s]
-	return &sc, nil
+	return sc, nil
 }

@@ -36,23 +36,25 @@ type InMemoryLogPersister struct {
 type InMemoryResultPersister struct {
 }
 
-func GetJobPersister() InMemoryJobPersister {
+func GetJobPersister() *InMemoryJobPersister {
 	jobOnce.Do(func() {
-		jobPersisterInstance = InMemoryJobPersister{}
+		jobPersisterInstance = InMemoryJobPersister{
+			jobs: make(map[uuid.UUID]api.JobSummary),
+		}
 	})
-	return jobPersisterInstance
+	return &jobPersisterInstance
 }
 
-func GetLogPersister() InMemoryLogPersister {
+func GetLogPersister() *InMemoryLogPersister {
 	logOnce.Do(func() {
 		logPersisterInstance = InMemoryLogPersister{}
 	})
-	return logPersisterInstance
+	return &logPersisterInstance
 }
 
-func GetResultPersister() InMemoryResultPersister {
+func GetResultPersister() *InMemoryResultPersister {
 	resultOnce.Do(func() {
 		resultPersisterInstance = InMemoryResultPersister{}
 	})
-	return resultPersisterInstance
+	return &resultPersisterInstance
 }
