@@ -12,7 +12,8 @@ const (
 )
 
 type JobPersister interface {
-	AddJob(js api.JobSummary, user string)
+	AddJob(js api.JobSummary, user string) error
+	UpdateJob(js api.JobSummary, user string) error
 }
 
 type LogPersister interface {

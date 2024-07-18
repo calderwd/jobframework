@@ -5,13 +5,14 @@ import (
 
 	"github.com/calderwd/jobframework/api"
 	jec "github.com/calderwd/jobframework/internal/jobexecutioncontroller"
+	ll "github.com/calderwd/jobframework/internal/logger"
 	"github.com/calderwd/jobframework/internal/persist"
 	"github.com/google/uuid"
 )
 
 var instance *jobManager
-
 var once sync.Once
+var logger ll.Logger = ll.GetInstance()
 
 func GetInstance() api.JobService {
 
@@ -39,13 +40,22 @@ func (jm *jobManager) AddJob(jobType string, jobSchedule api.JobSchedule, jobCon
 	jc, err := jec.GetJobRegistrar().GetJobConfig(jobType)
 
 	if err != nil {
+		logger.Error(err, "failed to job config based on job type")
 		return uuid.Nil, err
 	}
 
 	if jc.Profile.CanAdd() {
-		persist.GetJobPersister().AddJob(js, user)
-		jm.jobExec.ScheduleJob(js)
+		if err := persist.GetJobPersister().AddJob(js, user); err != nil {
+			logger.Error(err, "failed to persist job")
+			return uuid.Nil, err
+		}
 
+		if err := jm.jobExec.ScheduleJob(js); err != nil {
+			logger.Error(err, "failed to schedule job")
+			return uuid.Nil, err
+		}
+
+		logger.Info("successfully added job")
 	}
 	return js.Uuid, nil
 }

@@ -47,9 +47,9 @@ type JobSummary struct {
 	Context            JobContext
 	EvaluationId       uint64
 	Schedule           JobSchedule
-	LastExecutionStart time.Time
-	LastExeuctionEnd   time.Time
-	NextExecutionTime  time.Time
+	LastExecutionStart *time.Time
+	LastExeuctionEnd   *time.Time
+	NextExecutionTime  *time.Time
 }
 
 func (js JobSummary) Build(jobType string, jobSchedule JobSchedule, jobContext JobContext) JobSummary {
@@ -62,9 +62,9 @@ func (js JobSummary) Build(jobType string, jobSchedule JobSchedule, jobContext J
 	js.Progress = 0
 	js.EvaluationId = 0
 	js.Schedule = jobSchedule
-	js.LastExecutionStart = time.Time{}
-	js.LastExeuctionEnd = time.Time{}
-	js.NextExecutionTime = time.Time{}
+	js.LastExecutionStart = nil
+	js.LastExeuctionEnd = nil
+	js.NextExecutionTime = nil
 
 	return js
 }
