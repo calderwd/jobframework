@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,7 +90,7 @@ const (
 )
 
 type IJob interface {
-	Process() (bool, error)
+	Process(js JobSummary, ctx context.Context) (bool, error)
 }
 
 type JobConfig struct {
