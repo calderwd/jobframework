@@ -40,3 +40,7 @@ func (jec JobExecutionController) ScheduleJob(js api.JobSummary, user string) er
 
 	return err
 }
+
+func (jec JobExecutionController) Shutdown(force bool) {
+	sch.Shutdown(force)
+}

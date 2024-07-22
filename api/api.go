@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -90,7 +89,7 @@ const (
 )
 
 type IJob interface {
-	Process(js JobSummary, ctx context.Context) (bool, error)
+	Process(js JobSummary, jobCancelStream <-chan string) (bool, error)
 }
 
 type JobConfig struct {
@@ -116,4 +115,5 @@ type JobService interface {
 	GetJobLogPageCount(uuid uuid.UUID, evaluationId uint64, user string) (uint, error)
 	GetJobLogPage(uuid uuid.UUID, evaluationId uint64, pageNumber uint, user string) ([]string, error)
 	GetJobHistory(uuid uuid.UUID, user string) ([]JobSummary, error)
+	Shutdown(force bool)
 }

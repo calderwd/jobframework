@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/calderwd/jobframework/api"
+	"github.com/calderwd/jobframework/internal/jobexecutioncontroller/scheduler/standard"
 	ll "github.com/calderwd/jobframework/internal/logger"
 )
 
@@ -22,7 +23,7 @@ type schedulerFactory struct {
 
 var sf = schedulerFactory{
 	schedulers: map[api.ScheduleType]Scheduler{
-		api.Standard: &StandardScheduler{},
+		api.Standard: &(standard.StandardScheduler{}),
 		// api.Sequential: SequentialScheduler{},
 		// api.Periodic: PeriodicScheduler{},
 		// api.Cron: CronScheduler{}.
@@ -45,4 +46,11 @@ func GetJobScheduler(s api.ScheduleType) (Scheduler, error) {
 	sc.Start()
 
 	return sc, nil
+}
+
+func Shutdown(force bool) {
+	for k := range sf.schedulers {
+		sch := sf.schedulers[k]
+		sch.Stop()
+	}
 }

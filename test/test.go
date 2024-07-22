@@ -2,7 +2,6 @@ package test
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/calderwd/jobframework/api"
 	jobframework "github.com/calderwd/jobframework/pkg"
@@ -29,10 +28,8 @@ func RunAddTest() {
 
 	jobContext := api.JobContext{}
 
-	uuid, error := jf.AddJob(jobType, jobSchedule, jobContext, "myUser")
-	uuid, error = jf.AddJob(jobType2, jobSchedule, jobContext, "myUser")
+	jf.AddJob(jobType, jobSchedule, jobContext, "myUser")
+	jf.AddJob(jobType2, jobSchedule, jobContext, "myUser")
 
-	time.Sleep(10 * time.Second)
-	fmt.Printf("uuid = %s error = %s", uuid, error)
-
+	jf.Shutdown(false)
 }

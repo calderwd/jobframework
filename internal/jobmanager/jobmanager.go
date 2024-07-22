@@ -91,3 +91,7 @@ func (jm *jobManager) GetJobLogPage(uuid uuid.UUID, evaluationId uint64, pageNum
 func (jm *jobManager) GetJobHistory(uuid uuid.UUID, user string) ([]api.JobSummary, error) {
 	return []api.JobSummary{}, nil
 }
+
+func (jm *jobManager) Shutdown(force bool) {
+	jm.jobExec.Shutdown(force)
+}
