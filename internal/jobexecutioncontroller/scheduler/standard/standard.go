@@ -7,6 +7,7 @@ import (
 
 	"github.com/calderwd/jobframework/api"
 	ll "github.com/calderwd/jobframework/internal/logger"
+	"github.com/google/uuid"
 )
 
 const (
@@ -24,18 +25,91 @@ type StandardScheduler struct {
 	running              atomic.Bool
 	dispatcherStream     chan<- jobEntry
 	dispatcherTermStream <-chan struct{}
-	jobCancelStream      chan<- string
+	jobCancelStream      chan<- uuid.UUID
 }
 
 type jobWorker struct {
 	name              string
 	terminationStream <-chan struct{}
-	jobCancelStream   <-chan string
+	jobCancelStream   chan string
+}
+
+type workerPool struct {
+	maxWorkers int
+	workerPool []jobWorker
 }
 
 var (
 	logger ll.Logger = ll.GetInstance()
 )
+
+func newWorkerPool(maxWorkers int) workerPool {
+	return workerPool{
+		maxWorkers: maxWorkers,
+		workerPool: make([]jobWorker, 0, maxWorkers),
+	}
+}
+
+func (wp *workerPool) addWorker(jobStream chan jobEntry) {
+	jobWorker := jobWorker{
+		name: fmt.Sprintf("Worker-%d", len(wp.workerPool)+1),
+	}
+
+	jobCancelStream := make(chan string)
+	jobWorker.jobCancelStream = jobCancelStream
+	jobWorker.terminationStream = jobWorker.Start(jobStream)
+	wp.workerPool = append(wp.workerPool, jobWorker)
+}
+
+func (wp *workerPool) removeWorker(name string) {
+	for i, wk := range wp.workerPool {
+		if wk.name == name {
+			if i == 0 {
+				wp.workerPool = wp.workerPool[1:]
+				logger.Info(fmt.Sprintf("removing worker %s", name))
+				return
+			}
+			wp.workerPool = append(wp.workerPool[0:i], wp.workerPool[i+1:]...)
+			logger.Info(fmt.Sprintf("removing worker %s", name))
+		}
+	}
+}
+
+func (wp *workerPool) waitForShutdown() {
+	logger.Info("closing dispatcher - closing workers")
+	for _, worker := range wp.workerPool {
+		_, ok := <-worker.terminationStream
+		if !ok {
+			defer close(worker.jobCancelStream)
+			wp.removeWorker(worker.name)
+			logger.Info(fmt.Sprintf("Received termination from %s\n", worker.name))
+		}
+	}
+}
+
+func (wp *workerPool) sweepTerminatedWorkers() {
+	for _, worker := range wp.workerPool {
+		select {
+		case _, ok := <-worker.terminationStream:
+			if !ok {
+				defer close(worker.jobCancelStream)
+				wp.removeWorker(worker.name)
+				logger.Info(fmt.Sprintf("sweeper removing worker %s", worker.name))
+			}
+		default:
+		}
+	}
+}
+
+func (wp *workerPool) sendCancelRequest(uuid uuid.UUID) {
+	for _, w := range wp.workerPool {
+		w.jobCancelStream <- uuid.String()
+	}
+}
+
+func (wp workerPool) length() int {
+	return len(wp.workerPool)
+}
 
 func (jw *jobWorker) Start(jobStream <-chan jobEntry) <-chan struct{} {
 	terminationStream := make(chan struct{})
@@ -66,38 +140,35 @@ func (sch *StandardScheduler) Start() {
 	}
 }
 
-func (sch *StandardScheduler) runDispatcher() (chan<- jobEntry, <-chan struct{}, chan<- string) {
+func (sch *StandardScheduler) runDispatcher() (chan<- jobEntry, <-chan struct{}, chan<- uuid.UUID) {
 	dispatcherStream := make(chan jobEntry)
 	dispatcherTermStream := make(chan struct{})
-	jobCancelStream := make(chan string)
+	jobCancelStream := make(chan uuid.UUID)
 
 	go func() {
 		logger.Info("Dispatcher Started")
 		jobStream := make(chan jobEntry)
 		defer close(jobStream)
 		defer close(dispatcherTermStream)
+		defer close(jobCancelStream)
 
-		workerPool := make([]jobWorker, 0, maxConcurrentJobs)
+		workerPool := newWorkerPool(maxConcurrentJobs)
 
 		for je := range dispatcherStream {
 
-			if len(workerPool) <= maxConcurrentJobs {
-				jobWorker := jobWorker{
-					name: fmt.Sprintf("Worker-%d", len(workerPool)+1),
-				}
-				jobCancelStream := make(chan string)
-				jobWorker.terminationStream = jobWorker.Start(jobStream)
-				jobWorker.jobCancelStream = jobCancelStream
-				workerPool = append(workerPool, jobWorker)
+			if workerPool.length() <= maxConcurrentJobs {
+				workerPool.addWorker(jobStream)
 			}
 
-			jobStream <- je
+			select {
+			case jobStream <- je:
+			case uuid := <-jobCancelStream:
+				workerPool.sendCancelRequest(uuid)
+			}
+
+			workerPool.sweepTerminatedWorkers()
 		}
-		logger.Info("closing dispatcher - closing workers")
-		for _, worker := range workerPool {
-			<-worker.terminationStream
-			logger.Info(fmt.Sprintf("Received termination from %s\n", worker.name))
-		}
+		workerPool.waitForShutdown()
 
 	}()
 
@@ -113,7 +184,7 @@ func (sch *StandardScheduler) ScheduleJob(js api.JobSummary, job api.IJob) error
 }
 
 func (sch *StandardScheduler) CancelJob(js api.JobSummary) bool {
-	sch.jobCancelStream <- js.Uuid.String()
+	sch.jobCancelStream <- js.Uuid
 	return false
 }
 

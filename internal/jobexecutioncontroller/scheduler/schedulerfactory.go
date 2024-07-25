@@ -21,6 +21,10 @@ type schedulerFactory struct {
 	schedulers map[api.ScheduleType]Scheduler
 }
 
+func init() {
+	fmt.Println("Scheduler Factory init method")
+}
+
 var sf = schedulerFactory{
 	schedulers: map[api.ScheduleType]Scheduler{
 		api.Standard: &(standard.StandardScheduler{}),
