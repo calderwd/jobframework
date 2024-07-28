@@ -66,9 +66,10 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 			select {
 			case je, ok := <-dispatcherStream:
 
-				// If dispatcher channel closed then exit dispatcher (only reachable if channel empty)
+				// If dispatcher channel closed then let the done channel handle pool shutdown
 				if !ok {
-					break outer
+					sch.cancel()
+					continue
 				}
 
 				// If worker(s) busy add worker, and post job

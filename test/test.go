@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/calderwd/jobframework/api"
 	jobframework "github.com/calderwd/jobframework/pkg"
@@ -30,14 +31,14 @@ func RunAddTest() {
 
 	jf.AddJob(jobType, jobSchedule, jobContext, "myUser")
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 4; i++ {
 		jobContext = api.JobContext{
 			Context: fmt.Sprintf("Job %d", i),
 		}
 		jf.AddJob(jobType2, jobSchedule, jobContext, "myUser")
 	}
 
-	//time.Sleep(120 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// jobs := jf.ListJobs()
 
