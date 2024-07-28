@@ -16,9 +16,10 @@ func (j TestJob) Process(js api.JobSummary, jobCancelStream <-chan string) (bool
 		select {
 		case uuid := <-jobCancelStream:
 			fmt.Printf("Request to cancel job %s\n", uuid)
+			return false, nil
 		default:
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	fmt.Println("Test job end")
 	return true, nil

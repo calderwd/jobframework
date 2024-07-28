@@ -65,6 +65,7 @@ func (js JobSummary) Build(jobType string, jobSchedule JobSchedule, jobContext J
 	js.LastExecutionStart = nil
 	js.LastExeuctionEnd = nil
 	js.NextExecutionTime = nil
+	js.Context = jobContext
 
 	return js
 }
