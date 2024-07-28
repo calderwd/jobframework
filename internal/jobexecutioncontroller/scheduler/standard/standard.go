@@ -52,7 +52,6 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 	go func() {
 		logger.Info("Dispatcher Started")
 		jobStream := make(chan jobEntry)
-		defer close(jobStream)
 		defer close(dispatcherTermStream)
 		defer close(jobCancelStream)
 		defer close(workerTermStream)
@@ -89,6 +88,8 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 
 				done = nil
 				dispatcherStream = nil
+
+				close(jobStream)
 
 				// Wait for worker pool to empty
 				for workerPool.length() > 0 {
@@ -133,7 +134,7 @@ func (sch *StandardScheduler) CancelJob(js api.JobSummary) bool {
 
 // Shutdown the scheduler by closing the dispatcher channel and waiting for indication of shutdown
 func (sch *StandardScheduler) Stop() {
-	close(sch.dispatcherStream)
+	defer close(sch.dispatcherStream)
 	sch.cancel()
 	logger.Info("Waiting for dispatcher to terminate")
 	<-sch.dispatcherTermStream
