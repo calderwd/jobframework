@@ -3,6 +3,7 @@ package standard
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/calderwd/jobframework/api"
@@ -82,8 +83,12 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 				}
 
 			case <-done:
+				// Close receieve channel - don't take any more jobs
+				close(dispatcherStream)
+
 				// Done received, so drain dispatcher stream and wait for worker pool to complete
-				for range dispatcherStream {
+				for je := range dispatcherStream {
+					logger.Info(fmt.Sprintf("Drain dispatcher stream [%s]", je.jobSummary.Name))
 				}
 
 				done = nil
@@ -134,7 +139,6 @@ func (sch *StandardScheduler) CancelJob(js api.JobSummary) bool {
 
 // Shutdown the scheduler by closing the dispatcher channel and waiting for indication of shutdown
 func (sch *StandardScheduler) Stop() {
-	defer close(sch.dispatcherStream)
 	sch.cancel()
 	logger.Info("Waiting for dispatcher to terminate")
 	<-sch.dispatcherTermStream

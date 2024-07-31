@@ -71,20 +71,25 @@ func (jw *jobWorker) start(jobStream <-chan jobEntry, terminationStream chan<- w
 
 	go func() {
 		defer close(jobCancelStream)
+		inactivityStream := time.NewTimer(time.Duration(inactivitySeconds))
 
 		for {
+			if !inactivityStream.Stop() {
+				<-inactivityStream.C
+			}
+			inactivityStream.Reset(time.Duration(inactivitySeconds))
 			select {
 			case jqe, ok := <-jobStream:
 				if ok {
-					logger.Info(fmt.Sprintf("Running job in %s\n", jw.name))
+					logger.Info(fmt.Sprintf("Running job in %s", jw.name))
 					jqe.job.Process(jqe.jobSummary, jw.jobCancelStream)
 				} else {
-					logger.Info(fmt.Sprintf("closing worker %s\n", jw.name))
+					logger.Info(fmt.Sprintf("closing worker %s", jw.name))
 					terminationStream <- workerTerm{name: jw.name}
 					return
 				}
-			case <-time.After(time.Duration(inactivitySeconds)):
-				logger.Info("Been waiting too long for a new job")
+			case <-inactivityStream.C:
+				logger.Info(fmt.Sprintf("Been waiting too long for a new job [%s]", jw.name))
 				terminationStream <- workerTerm{name: jw.name}
 				return
 			}
