@@ -52,6 +52,16 @@ func GetJobScheduler(s api.ScheduleType) (Scheduler, error) {
 	return sc, nil
 }
 
+func CancelJob(js api.JobSummary, schedulerType api.ScheduleType, user string) error {
+	scheduler, err := GetJobScheduler(schedulerType)
+
+	if err != nil {
+		scheduler.CancelJob(js)
+	}
+
+	return err
+}
+
 func Shutdown(force bool) {
 	for k := range sf.schedulers {
 		sch := sf.schedulers[k]

@@ -38,9 +38,18 @@ func RunAddTest() {
 		jf.AddJob(jobType2, jobSchedule, jobContext, "myUser")
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(45 * time.Second)
 
-	// jobs := jf.ListJobs()
+	jobs := jf.ListJobs(api.JobFilter{}, "")
+
+	if len(jobs) > 0 {
+
+		for _, j := range jobs {
+			fmt.Println(j.Dump())
+		}
+	} else {
+		fmt.Println("Didn't list jobs")
+	}
 
 	jf.Shutdown(false)
 }

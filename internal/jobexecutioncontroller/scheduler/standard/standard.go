@@ -28,6 +28,7 @@ type StandardScheduler struct {
 	running              atomic.Bool
 	ctx                  context.Context
 	cancel               context.CancelFunc
+	stopSignal           atomic.Bool
 	dispatcherStream     chan<- jobEntry  // Jobs to be scheduled through dispatcher
 	dispatcherTermStream <-chan struct{}  // Indicates termination of dispatcher
 	jobCancelStream      chan<- uuid.UUID // Fan-out entry channel for job cancellation request
@@ -71,6 +72,11 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 					continue
 				}
 
+				if sch.stopSignal.Load() {
+					logger.Info("Dispatcher stopped accepting new jobs")
+					continue
+				}
+
 				// If worker(s) busy add worker, and post job
 				select {
 				case jobStream <- je:
@@ -82,12 +88,6 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 				}
 
 			case <-done:
-				// Done received, so drain dispatcher stream and wait for worker pool to complete
-				for range dispatcherStream {
-				}
-
-				done = nil
-				dispatcherStream = nil
 
 				close(jobStream)
 
@@ -99,7 +99,7 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 				break outer
 
 			case uuid := <-jobCancelStream:
-				// Broadcast cancellation request to works for designated job uuid
+				// Broadcast cancellation request to workers for designated job uuid
 				workerPool.sendCancelRequest(uuid)
 
 			case wt := <-workerPool.terminationStream:
@@ -114,6 +114,11 @@ func (sch *StandardScheduler) runDispatcher(ctx context.Context) (chan<- jobEntr
 
 // Post a new job to the dispatcher for execution
 func (sch *StandardScheduler) ScheduleJob(js api.JobSummary, job api.IJob) error {
+
+	if sch.stopSignal.Load() {
+		return errors.New("scheduler is stopping; job not accepted")
+	}
+
 	select {
 	case sch.dispatcherStream <- jobEntry{
 		jobSummary: js,
@@ -134,9 +139,12 @@ func (sch *StandardScheduler) CancelJob(js api.JobSummary) bool {
 
 // Shutdown the scheduler by closing the dispatcher channel and waiting for indication of shutdown
 func (sch *StandardScheduler) Stop() {
-	defer close(sch.dispatcherStream)
-	sch.cancel()
-	logger.Info("Waiting for dispatcher to terminate")
-	<-sch.dispatcherTermStream
-	logger.Info("Dispatcher terminated")
+	if sch.running.CompareAndSwap(true, false) {
+		sch.stopSignal.Store(true)
+		sch.cancel()
+		close(sch.dispatcherStream)
+		logger.Info("Waiting for dispatcher to terminate")
+		<-sch.dispatcherTermStream
+		logger.Info("Dispatcher terminated")
+	}
 }

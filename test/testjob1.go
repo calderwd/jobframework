@@ -20,6 +20,7 @@ func (j TestJob) Process(js api.JobSummary, jobCancelStream <-chan string) (bool
 		default:
 		}
 		time.Sleep(5 * time.Second)
+		panic(nil)
 	}
 	fmt.Println("Test job end")
 	return true, nil

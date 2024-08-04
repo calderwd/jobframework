@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,26 @@ type JobContext struct {
 
 type JobState int
 
+func (s JobState) String() string {
+	switch s {
+	case 0:
+		return "Idle"
+	case 1:
+		return "Scheduled"
+	case 2:
+		return "Rescheduler"
+	case 3:
+		return "Running"
+	case 4:
+		return "Deleting"
+	case 5:
+		return "Complete"
+	case 6:
+		return "Cancelled"
+	}
+	return "Unknown"
+}
+
 const (
 	Idle        = iota // Has been added to the database
 	Scheduled          // Waiting for first execution
@@ -29,6 +50,18 @@ const (
 )
 
 type JobStatus int
+
+func (s JobStatus) String() string {
+	switch s {
+	case 0:
+		return "Calculating"
+	case 1:
+		return "Success"
+	case 2:
+		return "Failure"
+	}
+	return "Unknown"
+}
 
 const (
 	Calculating = iota // Not yet complete
@@ -70,6 +103,11 @@ func (js JobSummary) Build(jobType string, jobSchedule JobSchedule, jobContext J
 	return js
 }
 
+func (js JobSummary) Dump() string {
+
+	return fmt.Sprintf(" { uuid : %s, name : %s, Desc : %s, State : %s, Status : %s, JobType : %s, Progress %d, Eval : %d", js.Uuid, js.Name, js.Description, js.State.String(), js.Status.String(), js.JobType, js.Progress, js.EvaluationId)
+}
+
 type JobFilter struct {
 }
 
@@ -109,7 +147,7 @@ type JobService interface {
 	GetJobRegistrar() JobRegistrar
 	AddJob(jobType string, jobSchedule JobSchedule, jobContext JobContext, user string) (uuid.UUID, error)
 	GetJob(uuid uuid.UUID, user string) (JobSummary, error)
-	CancelJob(uuid uuid.UUID, user string) error
+	CancelJob(uuid uuid.UUID, user string) bool
 	DeleteJob(uuid uuid.UUID, user string) error
 	ListJobs(filter JobFilter, user string) []JobSummary
 	GetEvaluation(uuid uuid.UUID, evaluationId uint64, user string) (string, error)

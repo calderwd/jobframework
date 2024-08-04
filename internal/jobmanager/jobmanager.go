@@ -61,11 +61,17 @@ func (jm *jobManager) AddJob(jobType string, jobSchedule api.JobSchedule, jobCon
 }
 
 func (jm *jobManager) GetJob(uuid uuid.UUID, user string) (api.JobSummary, error) {
-	return api.JobSummary{}, nil
+	return persist.GetJobPersister().GetJob(uuid, user)
 }
 
-func (jm *jobManager) CancelJob(uuid uuid.UUID, user string) error {
-	return nil
+func (jm *jobManager) CancelJob(uuid uuid.UUID, user string) bool {
+
+	js, err := persist.GetJobPersister().GetJob(uuid, user)
+	if err != nil {
+		return false
+	}
+
+	return jm.jobExec.CancelJob(js, user)
 }
 
 func (jm *jobManager) DeleteJob(uuid uuid.UUID, user string) error {
@@ -73,7 +79,7 @@ func (jm *jobManager) DeleteJob(uuid uuid.UUID, user string) error {
 }
 
 func (jm *jobManager) ListJobs(filter api.JobFilter, user string) []api.JobSummary {
-	return []api.JobSummary{}
+	return persist.GetJobPersister().ListJobs(filter, user)
 }
 
 func (jm *jobManager) GetEvaluation(uuid uuid.UUID, evaluationId uint64, user string) (string, error) {
@@ -94,4 +100,5 @@ func (jm *jobManager) GetJobHistory(uuid uuid.UUID, user string) ([]api.JobSumma
 
 func (jm *jobManager) Shutdown(force bool) {
 	jm.jobExec.Shutdown(force)
+	persist.Shutdown(force)
 }

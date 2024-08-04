@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/calderwd/jobframework/api"
+	"github.com/calderwd/jobframework/internal/persist"
 	"github.com/google/uuid"
 )
 
@@ -76,8 +78,22 @@ func (jw *jobWorker) start(jobStream <-chan jobEntry, terminationStream chan<- w
 			select {
 			case jqe, ok := <-jobStream:
 				if ok {
+					js := jqe.jobSummary
+					js.State = api.Running
+					persist.GetJobPersister().UpdateJob(js, "")
+
 					logger.Info(fmt.Sprintf("Running job in %s\n", jw.name))
-					jqe.job.Process(jqe.jobSummary, jw.jobCancelStream)
+					_, err := PanicWrapper(jqe.job.Process, jqe.jobSummary, jw.jobCancelStream)
+
+					js.State = api.Complete
+
+					if err != nil {
+						js.Status = api.Failure
+					} else {
+						js.Status = api.Success
+					}
+
+					persist.GetJobPersister().UpdateJob(js, "")
 				} else {
 					logger.Info(fmt.Sprintf("closing worker %s\n", jw.name))
 					terminationStream <- workerTerm{name: jw.name}
@@ -92,6 +108,18 @@ func (jw *jobWorker) start(jobStream <-chan jobEntry, terminationStream chan<- w
 	}()
 
 	return jobCancelStream
+}
+
+func PanicWrapper(process func(js api.JobSummary, cancel <-chan string) (bool, error), js api.JobSummary, cancel <-chan string) (b bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			b = false
+			err = fmt.Errorf("panic caught for running job")
+			logger.Error(err)
+		}
+	}()
+
+	return process(js, cancel)
 }
 
 // Broadcast a job cancellation request to all workers for the specified job (uuid)
