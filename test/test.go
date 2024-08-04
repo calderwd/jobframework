@@ -31,7 +31,7 @@ func RunAddTest() {
 
 	jf.AddJob(jobType, jobSchedule, jobContext, "myUser")
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 40; i++ {
 		jobContext = api.JobContext{
 			Context: fmt.Sprintf("Job %d", i),
 		}
